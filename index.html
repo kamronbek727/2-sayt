@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranglar Xotirasi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            min-width: 120px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 400px;
+            margin: 0 auto 20px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(45deg, #f0f0f0, #d0d0d0);
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            opacity: 0.7;
+            transform: scale(0.95);
+            cursor: default;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .message {
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .win-message {
+            color: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .difficulty-selector {
+            margin-bottom: 20px;
+        }
+
+        .difficulty-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .difficulty-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎨 Ranglar Xotirasi</h1>
+        
+        <div class="difficulty-selector">
+            <button class="difficulty-btn active" onclick="setDifficulty(3)">Oson (3x2)</button>
+            <button class="difficulty-btn" onclick="setDifficulty(4)">O'rta (4x3)</button>
+            <button class="difficulty-btn" onclick="setDifficulty(5)">Qiyin (5x4)</button>
+        </div>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div>Urinishlar</div>
+                <div id="moves">0</div>
+            </div>
+            <div class="info-item">
+                <div>Vaqt</div>
+                <div id="timer">00:00</div>
+            </div>
+            <div class="info-item">
+                <div>Juftlar</div>
+                <div id="pairs">0/0</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="controls">
+            <button class="btn" onclick="startNewGame()">Yangi O'yin</button>
+            <button class="btn" onclick="shuffleBoard()" id="shuffleBtn">Aralashtirish</button>
+        </div>
+
+        <div class="message" id="message">O'yinni boshlash uchun kartalarni bosing!</div>
+    </div>
+
+    <script>
+        let gameState = {
+            cards: [],
+            flippedCards: [],
+            matchedPairs: 0,
+            moves: 0,
+            timer: 0,
+            timerInterval: null,
+            gameStarted: false,
+            difficulty: 3,
+            totalPairs: 0
+        };
+
+        const emojis = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫', '⚪', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫', '⬛', '⬜', '❤️', '🧡'];
+        const colors = ['#ff4757', '#ff6348', '#ffa502', '#2ed573', '#1e90ff', '#5352ed', '#ff3838', '#2f3542', '#57606f', '#ff9ff3'];
+
+        function setDifficulty(level) {
+            gameState.difficulty = level;
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const board = document.getElementById('gameBoard');
+            if (level === 3) {
+                board.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                gameState.totalPairs = 3;
+            } else if (level === 4) {
+                board.style.gridTemplateColumns = 'repeat(4, 1fr)';
+                gameState.totalPairs = 6;
+            } else {
+                board.style.gridTemplateColumns = 'repeat(5, 1fr)';
+                gameState.totalPairs = 10;
+            }
+            
+            startNewGame();
+        }
+
+        function createCards() {
+            const numPairs = gameState.totalPairs;
+            const selectedEmojis = emojis.slice(0, numPairs);
+            const cardPairs = [...selectedEmojis, ...selectedEmojis];
+            
+            // Kartalarni aralashtirish
+            for (let i = cardPairs.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cardPairs[i], cardPairs[j]] = [cardPairs[j], cardPairs[i]];
+            }
+            
+            return cardPairs.map((emoji, index) => ({
+                id: index,
+                emoji: emoji,
+                isFlipped: false,
+                isMatched: false
+            }));
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            gameState.cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.id = `card-${card.id}`;
+                cardElement.onclick = () => flipCard(card.id);
+                
+                if (card.isFlipped || card.isMatched) {
+                    cardElement.textContent = card.emoji;
+                    cardElement.style.background = colors[Math.floor(Math.random() * colors.length)];
+                }
+                
+                if (card.isMatched) {
+                    cardElement.classList.add('matched');
+                }
+                
+                board.appendChild(cardElement);
+            });
+        }
+
+        function flipCard(cardId) {
+            const card = gameState.cards.find(c => c.id === cardId);
+            
+            if (!gameState.gameStarted) {
+                gameState.gameStarted = true;
+                startTimer();
+            }
+            
+            if (card.isFlipped || card.isMatched || gameState.flippedCards.length >= 2) {
+                return;
+            }
+            
+            card.isFlipped = true;
+            gameState.flippedCards.push(card);
+            
+            renderBoard();
+            
+            if (gameState.flippedCards.length === 2) {
+                gameState.moves++;
+                updateUI();
+                
+                setTimeout(() => {
+                    checkMatch();
+                }, 1000);
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = gameState.flippedCards;
+            
+            if (card1.emoji === card2.emoji) {
+                card1.isMatched = true;
+                card2.isMatched = true;
+                gameState.matchedPairs++;
+                
+                document.getElementById('message').textContent = '✨ Zo\'r! Juft topildi!';
+                
+                if (gameState.matchedPairs === gameState.totalPairs) {
+                    endGame();
+                }
+            } else {
+                card1.isFlipped = false;
+                card2.isFlipped = false;
+                document.getElementById('message').textContent = '🔄 Qayta urinib ko\'ring...';
+            }
+            
+            gameState.flippedCards = [];
+            renderBoard();
+            updateUI();
+        }
+
+        function startTimer() {
+            gameState.timerInterval = setInterval(() => {
+                gameState.timer++;
+                const minutes = Math.floor(gameState.timer / 60);
+                const seconds = gameState.timer % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+                gameState.timerInterval = null;
+            }
+        }
+
+        function endGame() {
+            stopTimer();
+            const message = document.getElementById('message');
+            message.textContent = `🎉 Tabriklaymiz! ${gameState.moves} urinishda ${gameState.timer} soniyada g'alaba qozondingiz!`;
+            message.classList.add('win-message');
+            
+            document.getElementById('shuffleBtn').textContent = 'Yana O\'ynash';
+        }
+
+        function startNewGame() {
+            gameState.cards = createCards();
+            gameState.flippedCards = [];
+            gameState.matchedPairs = 0;
+            gameState.moves = 0;
+            gameState.timer = 0;
+            gameState.gameStarted = false;
+            
+            stopTimer();
+            
+            document.getElementById('message').textContent = 'O\'yinni boshlash uchun kartalarni bosing!';
+            document.getElementById('message').classList.remove('win-message');
+            document.getElementById('shuffleBtn').textContent = 'Aralashtirish';
+            
+            renderBoard();
+            updateUI();
+        }
+
+        function shuffleBoard() {
+            if (gameState.gameStarted && gameState.matchedPairs < gameState.totalPairs) {
+                if (confirm('O\'yinni qayta boshlashni xohlaysizmi?')) {
+                    startNewGame();
+                }
+            } else {
+                startNewGame();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('moves').textContent = gameState.moves;
+            document.getElementById('pairs').textContent = `${gameState.matchedPairs}/${gameState.totalPairs}`;
+        }
+
+        // O'yinni boshlash
+        setDifficulty(3);
+    </script>
+</body>
+</html>
